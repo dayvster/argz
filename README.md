@@ -71,8 +71,12 @@ pub fn main() !void {
 - Long flags: `--verbose`
 - Short flags: `-v`
 - Short grouping: `-vxf` (multiple short flags)
-- Option with value: `--output=file` or `-o file` or `-ofile`
+- Option with value: `--output=file` or `-o file`
 - Multi-value: `--files a --files b` or `-f a -f b`
+
+## Lifetime Note
+
+String values returned from `parse()` are borrowed from the process argv. Keep the allocator alive (don't deallocate before parsing is done) or copy strings if you need them to outlive the parse call.
 
 ## Building
 

@@ -1,0 +1,26 @@
+*.o
+*.a
+*.lib
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+zig-cache/
+zig-out/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test_logs/
