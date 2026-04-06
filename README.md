@@ -7,11 +7,11 @@ A zero-cost CLI argument parser for Zig, generating parse logic at comptime for 
 Everything lives in a single file: `src/argz.zig`. Just drop it into your project and import it.
 
 Why single file? Because:
-- **No dependency management** - no need to set up a package.json or submodule
-- **Easy to vendor** - copy one file, done
-- **Minimal friction** - no external packages to trust or maintain
-- **Comptime-first design** - the entire library is just a few hundred lines that get specialized at compile time anyway
-
+- I like it?
+- I felt like it?
+- No dependencies 
+- You can literally just include the single file to your project
+- it looks nice
 ## Features
 
 - **Comptime-generated parsing** - No runtime argument matching or lookup
