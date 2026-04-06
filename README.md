@@ -52,13 +52,6 @@ pub fn main() !void {
 
     const Parser = argz.Parser(cmd, allocator);
     const result = try Parser.parse();
-
-    // result.verbose: bool
-    // result.output: []const u8
-    // result.count: i32
-    // result.files: std.ArrayList([]const u8)
-    // result.?subcmd: ?SubCommandType (if subcommands defined)
-}
 ```
 
 ## Supported Argument Types
@@ -66,9 +59,12 @@ pub fn main() !void {
 | Kind | Zig Type | Example |
 |------|----------|---------|
 | flag | `bool` | `--verbose` |
-| option (single) | `[]const u8`, `i32` | `--output=file`, `-o file` |
-| option (multi) | `std.ArrayList(T)` | `--files a --files b` |
+| option (string) | `[]const u8` | `--output=file`, `-o file` |
+| option (number) | `i32` | `--count=42`, `-c 42` |
+| option (multi) | `std.ArrayList([]const u8)` | `--files a --files b` |
 | positional | same as option | `file1 file2` |
+
+**Note**: Multi-value options only work with `[]const u8` (strings).
 
 ## Argument Syntax
 

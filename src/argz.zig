@@ -108,6 +108,10 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
                 return error.UnknownArgument;
             }
 
+            if (pending_arg) |_| {
+                return error.MissingValue;
+            }
+
             return result;
         }
 
@@ -117,13 +121,15 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
             pending: *?[]const u8,
         ) !bool {
             if (std.mem.indexOfScalar(u8, arg, '=')) |eq_idx| {
-                const name = arg[0..eq_idx];
+                const name = arg[2..eq_idx];
                 const value = arg[eq_idx + 1 ..];
                 return Self.setStringValue(result, name, value);
             }
 
+            const flag_name = arg[2..];
+
             inline for (config.args) |a| {
-                if (std.mem.eql(u8, arg, a.name)) {
+                if (std.mem.eql(u8, flag_name, a.name)) {
                     if (a.value_spec != null) {
                         pending.* = a.name;
                     } else {
