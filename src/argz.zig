@@ -100,16 +100,26 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
                 if (pending_arg) |name| {
                     if (try Self.consumeValue(&result, name, arg)) {
                         continue;
-                    } else {
-                        pending_arg = null;
                     }
+                    pending_arg = null;
+                    if (arg.len > 0 and (std.mem.startsWith(u8, arg, "--") or std.mem.startsWith(u8, arg, "-"))) {
+                        if (std.mem.startsWith(u8, arg, "--")) {
+                            if (try Self.parseLongFlag(&result, arg, &pending_arg)) continue;
+                        } else {
+                            try Self.parseShortGroup(&result, arg[1..], &pending_arg);
+                            continue;
+                        }
+                        if (pending_arg == null) return error.UnknownArgument;
+                        continue;
+                    }
+                    continue;
                 }
 
                 if (std.mem.startsWith(u8, arg, "--")) {
                     if (try Self.parseLongFlag(&result, arg, &pending_arg)) continue;
                 } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
                     try Self.parseShortGroup(&result, arg[1..], &pending_arg);
-                    if (pending_arg != null) continue;
+                    continue;
                 } else {
                     try Self.parsePositional(&result, arg);
                     continue;

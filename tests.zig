@@ -4,6 +4,18 @@ const Command = argz.Command;
 const GenerateResultType = argz.GenerateResultType;
 const ArgError = argz.ArgError;
 
+fn TestIterator(comptime args: []const []const u8) type {
+    return struct {
+        idx: usize = 0,
+
+        pub fn next(self: *@This()) ?[]const u8 {
+            if (self.idx >= args.len) return null;
+            defer self.idx += 1;
+            return args[self.idx];
+        }
+    };
+}
+
 test "GenerateResultType with flag" {
     const cmd = Command{
         .name = "test",
@@ -211,4 +223,136 @@ test "default values for bool and i32" {
     const result: Result = std.mem.zeroes(Result);
     try std.testing.expect(result.verbose == false);
     try std.testing.expect(result.count == 0);
+}
+
+test "parse long flag" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .flag, .name = "verbose" },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "--verbose" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expect(result.verbose == true);
+}
+
+test "parse short flag" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .flag, .name = "verbose", .short = 'v' },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "-v" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expect(result.verbose == true);
+}
+
+test "parse short group" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .flag, .name = "verbose", .short = 'v' },
+            .{ .kind = .flag, .name = "force", .short = 'f' },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "-vf" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expect(result.verbose == true);
+    try std.testing.expect(result.force == true);
+}
+
+test "parse long option with equals" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .option, .name = "output", .value_spec = .{ .name = "output", .type = []const u8 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "--output=file.txt" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expectEqualSlices(u8, "file.txt", result.output);
+}
+
+test "parse short option with separate value" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .option, .name = "output", .short = 'o', .value_spec = .{ .name = "output", .type = []const u8 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "-o", "file.txt" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expectEqualSlices(u8, "file.txt", result.output);
+}
+
+test "parse short option with glued value" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .option, .name = "output", .short = 'o', .value_spec = .{ .name = "output", .type = []const u8 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "-ofile.txt" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expectEqualSlices(u8, "file.txt", result.output);
+}
+
+test "parse i32 option" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .option, .name = "count", .value_spec = .{ .name = "count", .type = i32 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "--count", "42" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expectEqual(@as(i32, 42), result.count);
+}
+
+test "parse unknown argument returns error" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .flag, .name = "verbose" },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "--unknown" }){};
+    const result = Parser.parseArgs(iter);
+    try std.testing.expectError(ArgError.UnknownArgument, result);
+}
+
+test "parse missing value returns error" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .option, .name = "output", .value_spec = .{ .name = "output", .type = []const u8 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "--output" }){};
+    const result = Parser.parseArgs(iter);
+    try std.testing.expectError(ArgError.MissingValue, result);
+}
+
+test "parse positional arg" {
+    const cmd = Command{
+        .name = "test",
+        .args = &.{
+            .{ .kind = .positional, .name = "", .value_spec = .{ .name = "input", .type = []const u8 } },
+        },
+    };
+    const Parser = argz.Parser(cmd, std.testing.failing_allocator);
+    const iter = TestIterator(&.{ "prog", "file.txt" }){};
+    const result = try Parser.parseArgs(iter);
+    try std.testing.expectEqualSlices(u8, "file.txt", @field(result, ""));
 }
