@@ -78,15 +78,25 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
         const Self = @This();
 
         pub fn parse() !result_type {
-            var result: result_type = std.mem.zeroes(result_type);
-            var args = std.process.args();
-            defer args.deinit();
+            return Self.parseArgs(std.process.args());
+        }
 
-            _ = args.next();
+        pub fn parseArgs(iter: anytype) !result_type {
+            var result: result_type = std.mem.zeroes(result_type);
+
+            inline for (config.args) |a| {
+                const arg_type = if (a.value_spec) |vs| vs.type else bool;
+                if (a.multi) {
+                    @field(result, a.name) = std.ArrayList(arg_type).init(allocator);
+                }
+            }
+
+            var iter_copy = iter;
+            _ = iter_copy.next();
 
             var pending_arg: ?[]const u8 = null;
 
-            while (args.next()) |arg| {
+            while (iter_copy.next()) |arg| {
                 if (pending_arg) |name| {
                     if (try Self.consumeValue(&result, name, arg)) {
                         continue;
@@ -99,7 +109,7 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
                     if (try Self.parseLongFlag(&result, arg, &pending_arg)) continue;
                 } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
                     try Self.parseShortGroup(&result, arg[1..], &pending_arg);
-                    continue;
+                    if (pending_arg != null) continue;
                 } else {
                     try Self.parsePositional(&result, arg);
                     continue;
@@ -152,11 +162,14 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
                     if (a.short) |s| {
                         if (s == char) {
                             if (a.value_spec != null) {
-                                if (idx != group.len - 1) {
-                                    return error.InvalidShortGroup;
+                                if (idx == group.len - 1) {
+                                    pending.* = a.name;
+                                    return;
+                                } else {
+                                    const value = group[idx + 1 ..];
+                                    try Self.setTypedValue(result, a, value);
+                                    return;
                                 }
-                                pending.* = a.name;
-                                return;
                             } else {
                                 @field(result, a.name) = true;
                             }
@@ -204,8 +217,14 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
         }
 
         fn addArrayItem(result: *result_type, a: anytype, value: []const u8) !void {
-            var list = &@field(result, a.name);
-            try list.append(allocator, value);
+            if (a.multi) {
+                const ListType = @TypeOf(@field(result, a.name));
+                var list: ListType = @field(result, a.name);
+                try list.append(value);
+                @field(result, a.name) = list;
+            } else {
+                @field(result, a.name) = value;
+            }
         }
 
         fn parsePositional(result: *result_type, value: []const u8) !void {

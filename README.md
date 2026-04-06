@@ -71,7 +71,7 @@ pub fn main() !void {
 - Long flags: `--verbose`
 - Short flags: `-v`
 - Short grouping: `-vxf` (multiple short flags)
-- Option with value: `--output=file` or `-o file`
+- Option with value: `--output=file` or `-o file` or `-ofile`
 - Multi-value: `--files a --files b` or `-f a -f b`
 
 ## Lifetime Note
