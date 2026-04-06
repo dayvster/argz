@@ -85,9 +85,8 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
             var result: result_type = std.mem.zeroes(result_type);
 
             inline for (config.args) |a| {
-                const arg_type = if (a.value_spec) |vs| vs.type else bool;
-                if (a.multi) {
-                    @field(result, a.name) = std.ArrayList(arg_type).init(allocator);
+                if (a.multi and a.value_spec != null) {
+                    @field(result, a.name) = std.ArrayList(a.value_spec.?.type).init(allocator);
                 }
             }
 
@@ -98,20 +97,8 @@ pub fn Parser(comptime config: Command, allocator: std.mem.Allocator) type {
 
             while (iter_copy.next()) |arg| {
                 if (pending_arg) |name| {
-                    if (try Self.consumeValue(&result, name, arg)) {
-                        continue;
-                    }
+                    _ = try Self.consumeValue(&result, name, arg);
                     pending_arg = null;
-                    if (arg.len > 0 and (std.mem.startsWith(u8, arg, "--") or std.mem.startsWith(u8, arg, "-"))) {
-                        if (std.mem.startsWith(u8, arg, "--")) {
-                            if (try Self.parseLongFlag(&result, arg, &pending_arg)) continue;
-                        } else {
-                            try Self.parseShortGroup(&result, arg[1..], &pending_arg);
-                            continue;
-                        }
-                        if (pending_arg == null) return error.UnknownArgument;
-                        continue;
-                    }
                     continue;
                 }
 
